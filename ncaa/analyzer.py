@@ -82,7 +82,7 @@ for i in range(1101, 1465):
   df.loc[ (df.Wteam == i) & (df.Wteam > df.Lteam) & (df.Wloc == 'A'), 'Team1isHome' ] = 1
   df.loc[ (df.Wteam == i) & (df.Wloc == 'N'), 'Team1isHome' ] = 2
 df['ClassDiff'] = df.Team1class - df.Team2class
-df = df.drop( [ 'Wteam', 'Lteam', 'Wscore', 'Lscore', 'WteamClass', 'LteamClass', 'Team1class', 'Team2class' ], axis=1) 
+#df = df.drop( [ 'Wteam', 'Lteam', 'Wscore', 'Lscore', 'WteamClass', 'LteamClass', 'Team1class', 'Team2class' ], axis=1) 
 
 #------------------------    FOM FOR EACH REGULAR GAME    -------------------------------------
 df.loc[ (df.Team1score > df.Team2score), 'FOM1' ] = (df.Team1score / (df.Team1score + df.Team2score)) 
@@ -96,11 +96,23 @@ df.loc[ (df.FOM2 > 0.95), 'FOM2' ] = 0.95
 df.loc[ (df.FOM1 < 0.05), 'FOM1' ] = 0.05
 df.loc[ (df.FOM2 < 0.05), 'FOM2' ] = 0.05
 
-#------------------------    CALC AFOM FOR EACH TEAM  -------------------------------------
+#------------------------    CALC AFOM AND STDDEV FOR EACH TEAM  -------------------------------------
 for i in range(1101,1465):
-  teams.loc[ (teams.Team_Id == i), 'AFOM1'] =  (df[ (df.Season == year) & (df.Team1 == i)]['FOM1'].sum() + df[ (df.Season == year) & (df.Team2 == i)]['FOM2'].sum())/df[ (df.Season == year) & ((df.Team1 == i) | (df.Team2 == i))]['FOM1'].count()
+  a = df[ (df.Season == year) & (df.Team1 == i)]['FOM1'].values
+  a = np.append(a, df[ (df.Season == year) & (df.Team2 == i)]['FOM2'].values)
+  b = df[ (df.Season == year) & (df.Team1 == i)]['FOM2'].values
+  b = np.append(a, df[ (df.Season == year) & (df.Team2 == i)]['FOM1'].values)
+  teams.loc[ (teams.Team_Id == i), 'AFOM1'] = np.mean(a)
+  teams.loc[ (teams.Team_Id == i), 'OPFOM1'] = np.mean(b)
+  teams.loc[ (teams.Team_Id == i), 'AFOMSD'] = np.std(a)
   df.loc[ (df.Team1 == i), 'Team1AFOM1']  = teams[ (teams.Team_Id == i)]['AFOM1'].mean()
   df.loc[ (df.Team2 == i), 'Team2AFOM1']  = teams[ (teams.Team_Id == i)]['AFOM1'].mean()
+  df.loc[ (df.Team1 == i), 'Team1OPFOM1']  = teams[ (teams.Team_Id == i)]['OPFOM1'].mean()
+  df.loc[ (df.Team2 == i), 'Team2OPFOM1']  = teams[ (teams.Team_Id == i)]['OPFOM1'].mean()
+  df.loc[ (df.Team1 == i), 'Team1AFOMSD'] = teams[ (teams.Team_Id == i)]['AFOMSD'].mean()
+  df.loc[ (df.Team2 == i), 'Team2AFOMSD'] = teams[ (teams.Team_Id == i)]['AFOMSD'].mean()
+df['AFOMSD'] = df.Team1AFOMSD + df.Team2AFOMSD
+df['OPFOMDIF'] = df.Team1OPFOM1 - df.Team2OPFOM1
 
 ##---------------------  NOW CALCULATE PRED FOM FOR EACH REGULAR SEASON GAME ------------------------
 #Make base prediction
@@ -114,6 +126,25 @@ df.loc[ (df.PFOM1 < 0.46), 'PFOM1'] = 1.-(1.-df.PFOM1)*(1.+float(corr))
 #Finally, account for differences in class
 df.loc[ (df.ClassDiff < 0), 'PFOM1'] = df.PFOM1**(1/(2*abs(df.ClassDiff)))
 df.loc[ (df.ClassDiff > 0), 'PFOM1'] = 1.-((1.-df.PFOM1)**(1/(2*abs(df.ClassDiff))))
+
+#---------------------  NOW CALCULATE FREE THROW SCORE FOR EACH TEAM           ------------------------
+for i in range(1101, 1465):
+  Ftm  = df.loc[ (df.Season == year) & (df.Wteam == i)]['Wftm'].sum()
+  Fta  = df.loc[ (df.Season == year) & (df.Wteam == i)]['Wfta'].sum()
+  Ftm += df.loc[ (df.Season == year) & (df.Lteam == i)]['Lftm'].sum()
+  Fta += df.loc[ (df.Season == year) & (df.Lteam == i)]['Lfta'].sum()
+  nFouls = df.loc[ (df.Season == year) & (df.Wteam == i)]['Wpf'].sum()
+  nFouls += df.loc[ (df.Season == year) & (df.Lteam == i)]['Lpf'].sum()
+  count = df.loc[ (df.Season == year) & ((df.Wteam == i) | (df.Lteam == i))]['Wpf'].count()
+  if (Fta > 0): teams.loc[ (teams.Team_Id == i), 'FTP' ] = float(Ftm)/float(Fta)
+  if (count > 0): teams.loc[ (teams.Team_Id == i), 'nFouls' ] = nFouls/count
+  df.loc[ (df.Team1 == i), 'Team1FTP'] = teams[ (teams.Team_Id == i)]['FTP'].mean()
+  df.loc[ (df.Team2 == i), 'Team2FTP'] = teams[ (teams.Team_Id == i)]['FTP'].mean()
+  df.loc[ (df.Team1 == i), 'Team1NF']  = teams[ (teams.Team_Id == i)]['nFouls'].mean()
+  df.loc[ (df.Team2 == i), 'Team2NF']  = teams[ (teams.Team_Id == i)]['nFouls'].mean()
+df['FTScore'] = df.Team1FTP * df.Team2NF - df.Team2FTP * df.Team1NF
+print df[(df.Season == 2015) | (df.Season == 2014)][['FOM1','Team1AFOM1','Team2AFOM1','ClassDiff','Team1OPFOM1','Team2OPFOM1','FTScore']].tail(30)
+
 
 #--------------------- USE THIS TO MAKE PREDICTIONS FOR 2015 TOURNEY
 for i in range(1101, 1465):
@@ -135,7 +166,7 @@ for i in range(1101, 1465):
   tourney.loc[ (tourney.Wteam == i) & (tourney.Wteam > tourney.Lteam) & (tourney.Wloc == 'A'), 'Team1isHome' ] = 1
   tourney.loc[ (tourney.Wteam == i) & (tourney.Wloc == 'N'), 'Team1isHome' ] = 2
 tourney['ClassDiff'] = tourney.Team1class - tourney.Team2class
-tourney = tourney.drop( [ 'Wteam', 'Lteam', 'Wscore', 'Lscore', 'WteamClass', 'LteamClass', 'Team1class', 'Team2class' ], axis=1) 
+#tourney = tourney.drop( [ 'Wteam', 'Lteam', 'Wscore', 'Lscore', 'WteamClass', 'LteamClass', 'Team1class', 'Team2class' ], axis=1) 
 
 #------------------------    FOM FOR EACH REGULAR GAME    -------------------------------------
 tourney.loc[ (tourney.Team1score > tourney.Team2score), 'FOM1' ] = (tourney.Team1score / (tourney.Team1score + tourney.Team2score)) 
@@ -153,6 +184,13 @@ tourney.loc[ (tourney.FOM2 < 0.05), 'FOM2' ] = 0.05
 for i in range(1101,1465):
   tourney.loc[ (tourney.Team1 == i), 'Team1AFOM1']  = teams[ (teams.Team_Id == i)]['AFOM1'].mean()
   tourney.loc[ (tourney.Team2 == i), 'Team2AFOM1']  = teams[ (teams.Team_Id == i)]['AFOM1'].mean()
+  tourney.loc[ (tourney.Team1 == i), 'Team1OPFOM1']  = teams[ (teams.Team_Id == i)]['OPFOM1'].mean()
+  tourney.loc[ (tourney.Team2 == i), 'Team2OPFOM1']  = teams[ (teams.Team_Id == i)]['OPFOM1'].mean()
+  tourney.loc[ (tourney.Team1 == i), 'Team1AFOMSD'] = teams[ (teams.Team_Id == i)]['AFOMSD'].mean()
+  tourney.loc[ (tourney.Team2 == i), 'Team2AFOMSD'] = teams[ (teams.Team_Id == i)]['AFOMSD'].mean()
+tourney['AFOMSD'] = tourney.Team1AFOMSD + tourney.Team2AFOMSD
+tourney['OPFOMDIF'] = tourney.Team1OPFOM1 - tourney.Team2OPFOM1
+tourney.loc[ tourney.AFOMSD.isnull(), 'AFOMSD' ] = 0.1
 
 ##---------------------  NOW CALCULATE PRED FOM FOR EACH REGULAR SEASON GAME ------------------------
 #Make base prediction
@@ -188,10 +226,12 @@ for i in range(1101,1465):
   tourney.loc[ (tourney.Team1 == i), 'Team1Seed']  = seeds[ (seeds.Season == year) & (seeds.Team == i)]['Seed'].mean()
   tourney.loc[ (tourney.Team2 == i), 'Team2Seed']  = seeds[ (seeds.Season == year) & (seeds.Team == i)]['Seed'].mean()
 tourney['SeedDiff'] = tourney['Team1Seed'] - tourney['Team2Seed']
-print tourney[tourney.Season == year][['Team1','Team2','ClassDiff','Team1score','Team2score','FOM1','PFOM', 'SeedDiff','Team1isHome']].head(30)
 
-#---------------------  NOW CALCULATE HOMEFIELD ADVANTAGE  ----------------------------------------------------
-
-
-#--------------------  NOW CALCULATE WINNINGNESS PREDICTIONS ----------------------------------------------------
+#---------------------  NOW CALCULATE FREE THROW SCORE FOR EACH TEAM           ------------------------
+for i in range(1101, 1465):
+  tourney.loc[ (tourney.Team1 == i), 'Team1FTP'] = teams[ (teams.Team_Id == i)]['FTP'].mean()
+  tourney.loc[ (tourney.Team2 == i), 'Team2FTP'] = teams[ (teams.Team_Id == i)]['FTP'].mean()
+  tourney.loc[ (tourney.Team1 == i), 'Team1NF']  = teams[ (teams.Team_Id == i)]['nFouls'].mean()
+  tourney.loc[ (tourney.Team2 == i), 'Team2NF']  = teams[ (teams.Team_Id == i)]['nFouls'].mean()
+tourney['FTScore'] = tourney.Team1FTP * tourney.Team2NF - tourney.Team2FTP * tourney.Team1NF
 
