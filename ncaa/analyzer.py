@@ -484,24 +484,25 @@ for i in range(1101,1465):
     Team2FTP     = teams[ (teams.Team_Id == j)]['FTP'].mean()
     Team1NF      = teams[ (teams.Team_Id == i)]['nFouls'].mean()
     Team2NF      = teams[ (teams.Team_Id == j)]['nFouls'].mean()
+    OPFOM1       = teams[ (teams.Team_Id == i)]['OPFOM1'].mean()
+    OPFOM2       = teams[ (teams.Team_Id == j)]['OPFOM1'].mean()
+    SEED1        = seeds[ (seeds.Season == year) & (seeds.Team == i)]['Seed'].mean()
+    SEED2        = seeds[ (seeds.Season == year) & (seeds.Team == j)]['Seed'].mean()
     #Predict high-level variables
     ClassDiff = Team1_Class-Team2_Class
-    DEFSCORE = offscore_vec[k]
+    OFFSCORE = offscore_vec[k]
     DEFSCORE = defscore_vec[k]
     FOM      = fom_vec[k]
-    OPFOM1   = teams[ (teams.Team_Id == i)]['OPFOM1'].mean()
-    OPFOM2   = teams[ (teams.Team_Id == j)]['OPFOM1'].mean()
     FTSCORE  = Team1FTP * Team2NF - Team2FTP * Team1NF
-    SEED1    = seeds[ (seeds.Season == year) & (seeds.Team == i)]['Seed'].mean()
-    SEED2    = seeds[ (seeds.Season == year) & (seeds.Team == j)]['Seed'].mean()
     SEEDDIF  = SEED1 - SEED2 
     #Final prediction
     if ((Team1NF != Team1NF) or (Team2NF != Team2NF)):
       output = 0.5    
     else:
-      output = forest.predict([OFFSCORE, DEFSCORE, FOM, SEEDDIF, FTScore, classDiff, OPFOM1-OPFOM2]) 
+      output = forest.predict([OFFSCORE, DEFSCORE, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]) 
     #forest.predict(OFFSCORE, DEFSCORE, FOM, 'SeedDiff','FTScore', classDiff,'OPFOMDIF') 
     open_file_object.writerows(zip(i,"_", j, "_", output))
+    print i, j, output
 
 #Close file
 predictions_file.close()
