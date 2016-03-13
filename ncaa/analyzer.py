@@ -1,7 +1,5 @@
 import pandas as pd
 import numpy as np
-import pylab as P
-import matplotlib
 from sklearn.ensemble import RandomForestClassifier 
 import csv
 
@@ -24,12 +22,13 @@ teams = pd.read_csv('data/Teams.csv', header = 0)
 seeds = pd.read_csv('data/TourneySeeds.csv', header = 0)
 
 #------------------------    GENERAL OVERVIEW OF METHOD    -------------------------------------
-#  1) We train on the 2012-2015 regular season data in order to collect all our variables
-#     (except the seeds, obviously)
-#  2) We test #1 on the tourney data from 2001-present
-#  3) Then we use the 2001-2011 tourney data to train our high-level variables on the 
-#     final prediction
-#  4) So that we can test the final prediction on everything. 
+#  1) We train on the 2015 regular season data in order to collect all our variables
+#     (except the seeds, obviously).  The correction to the FOM variable and the 
+#     "top teams" are determined over the past 3 years 
+#  2) We test #1 on the tourney data from last 10 years
+#  3) Then we use the tourney data from the last 10 years to train our high-level variables
+#     on the final prediction
+#  4) So that we can test the final prediction on 2015
 
 #------------------------    EXPLANATION OF VARIABLES    -------------------------------------
 #Timing information
@@ -317,14 +316,14 @@ train_data = train.values
 tourney['ClassDiff'] = tourney.ClassDiff * (tourney.Daynum < 140)
 forest = RandomForestClassifier(n_estimators = 100)
 forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
-test = tourney[tourney.Season >= year-14][['FOM1','Team1AFOM1','Team2AFOM1','ClassDiff']]
+test = tourney[tourney.Season >= year-10][['FOM1','Team1AFOM1','Team2AFOM1','ClassDiff']]
 test_data = test.values
 output = forest.predict(test_data[0::,1::]).astype(float)
-tourney.loc[ (tourney.Season >= year-14), 'CPFOM'] = output
-tourney.loc[ (tourney.Season >= year-14), 'Myerr'] = (tourney.PFOM1 - tourney.FOM1)/tourney.FOM1
-tourney.loc[ (tourney.Season >= year-14), 'Coerr'] = (tourney.CPFOM - tourney.FOM1)/tourney.FOM1
-tourney.loc[ (tourney.Season >= year-14) & ((tourney.CPFOM > .3) | (tourney.CPFOM < .7)), 'PFOM'] = tourney.PFOM1
-tourney.loc[ (tourney.Season >= year-14) & ((tourney.CPFOM < .3) | (tourney.CPFOM > .7)), 'PFOM'] = tourney.CPFOM
+tourney.loc[ (tourney.Season >= year-10), 'CPFOM'] = output
+tourney.loc[ (tourney.Season >= year-10), 'Myerr'] = (tourney.PFOM1 - tourney.FOM1)/tourney.FOM1
+tourney.loc[ (tourney.Season >= year-10), 'Coerr'] = (tourney.CPFOM - tourney.FOM1)/tourney.FOM1
+tourney.loc[ (tourney.Season >= year-10) & ((tourney.CPFOM > .3) | (tourney.CPFOM < .7)), 'PFOM'] = tourney.PFOM1
+tourney.loc[ (tourney.Season >= year-10) & ((tourney.CPFOM < .3) | (tourney.CPFOM > .7)), 'PFOM'] = tourney.CPFOM
 fom_vec = []
 for i in range(1101,1465):
   for j in range(i+1, 1465): 
@@ -405,10 +404,10 @@ train = df[(df.Season >= year-3) & (df.Season <= year)][['FOM1','TO_DIFF','AST_D
 train_data = train.values
 forest = RandomForestClassifier(n_estimators = 100)
 forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
-test = tourney[(tourney.Season >= year-14) & (tourney.Season <= year)][['FOM1','TO_DIFF','AST_DIFF','ST_DIFF','OR_DIFF','FGP_DIFF','FGA_DIFF','FGP3_DIFF','FGA3_DIFF']]
+test = tourney[(tourney.Season >= year-10) & (tourney.Season <= year)][['FOM1','TO_DIFF','AST_DIFF','ST_DIFF','OR_DIFF','FGP_DIFF','FGA_DIFF','FGP3_DIFF','FGA3_DIFF']]
 test_data = test.values
 output = forest.predict(test_data[0::,1::]).astype(float)
-tourney.loc[ (tourney.Season >= year-14) & (tourney.Season <= year), 'OFFSCORE'] = output
+tourney.loc[ (tourney.Season >= year-10) & (tourney.Season <= year), 'OFFSCORE'] = output
 offscore_vec = []
 for i in range(1101,1465):
   for j in range(i+1, 1465): 
@@ -438,10 +437,10 @@ train = df[(df.Season >= year-3) & (df.Season <= year)][['FOM1','TO_DIFF','ST_DI
 train_data = train.values
 forest = RandomForestClassifier(n_estimators = 100)
 forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
-test = tourney[(tourney.Season >= year-14) & (tourney.Season <= year)][['FOM1','TO_DIFF','ST_DIFF','DR_DIFF','BLK_DIFF']]
+test = tourney[(tourney.Season >= year-10) & (tourney.Season <= year)][['FOM1','TO_DIFF','ST_DIFF','DR_DIFF','BLK_DIFF']]
 test_data = test.values
 output = forest.predict(test_data[0::,1::]).astype(float)
-tourney.loc[(tourney.Season >= year-14) & (tourney.Season <= year), 'DEFSCORE'] = output
+tourney.loc[(tourney.Season >= year-10) & (tourney.Season <= year), 'DEFSCORE'] = output
 defscore_vec = []
 for i in range(1101,1465):
   for j in range(i+1, 1465): 
@@ -461,15 +460,14 @@ for i in range(1101,1465):
 
 ###          NOW FOR THE BIG PREDICTIONS!!!!!!!!     #######
 #Train on the 2001-2011 tourney data
-print "here"
-train = tourney[((tourney.Season >= year-14) & (tourney.Season < year-3))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']]
+train = tourney[((tourney.Season >= year-10) & (tourney.Season < year-3))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']]
 train_data = train.values
 forest = RandomForestClassifier(n_estimators = 100)
 forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
 
 #Open file to store predictions
-print "here2"
-train = tourney[((tourney.Season >= year-14) & (tourney.Season < year-3))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']]
+print "470"
+train = tourney[((tourney.Season >= year-10) & (tourney.Season <= year-1))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']]
 predictions_file = open("2015_pred.csv", "wb")
 open_file_object = csv.writer(predictions_file)
 open_file_object.writerow(["id","pred"])
@@ -484,8 +482,8 @@ for i in range(1101,1465):
     Team2_Class  = teams[ (teams.Team_Id == j)]['Team_Class'].mean()
     Team1FTP     = teams[ (teams.Team_Id == i)]['FTP'].mean()
     Team2FTP     = teams[ (teams.Team_Id == j)]['FTP'].mean()
-    Team1NF      = teams[ (teams.Team_Id == i)]['NF'].mean()
-    Team2NF      = teams[ (teams.Team_Id == j)]['NF'].mean()
+    Team1NF      = teams[ (teams.Team_Id == i)]['nFouls'].mean()
+    Team2NF      = teams[ (teams.Team_Id == j)]['nFouls'].mean()
     #Predict high-level variables
     ClassDiff = Team1_Class-Team2_Class
     DEFSCORE = offscore_vec[k]
