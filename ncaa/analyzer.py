@@ -431,7 +431,7 @@ for i in range(1101,1465):
       offscore_vec.append(0)
       continue
     OFFSCORE = forest.predict([NTO1-NTO2, NAST1-NAST2, NST1-NST2, NOR1-NOR2, FGP1-FGP2, FGA1-FGA2, FGP31-FGP32, FGA31-FGA32])
-    offscore_vec.append(OFFSCORE)
+    offscore_vec.append(OFFSCORE[0])
 #Then train the defensive score
 train = df[(df.Season >= year-3) & (df.Season <= year)][['FOM1','TO_DIFF','ST_DIFF','DR_DIFF','BLK_DIFF']]
 train_data = train.values
@@ -456,7 +456,7 @@ for i in range(1101,1465):
       defscore_vec.append(0)
       continue
     DEFSCORE = forest.predict([NTO1-NTO2, NST1-NST2, NDR1-NDR2, NBLK1-NBLK2])
-    defscore_vec.append(DEFSCORE)
+    defscore_vec.append(DEFSCORE[0])
 
 ###          NOW FOR THE BIG PREDICTIONS!!!!!!!!     #######
 #Train on the 2001-2011 tourney data
@@ -472,12 +472,16 @@ predictions_file = open("2015_pred.csv", "wb")
 open_file_object = csv.writer(predictions_file)
 open_file_object.writerow(["id","pred"])
 
-#Test on the 2012-2015 tourney data
+#Predict all 2015 matchups
 k = -1
 for i in range(1101,1465):
   for j in range(i+1, 1465): 
     k += 1
     #Load in variables
+    SEED1        = seeds[ (seeds.Season == year) & (seeds.Team == i)]['Seed'].mean()
+    SEED2        = seeds[ (seeds.Season == year) & (seeds.Team == j)]['Seed'].mean()
+    if (SEED1 != SEED1): continue
+    if (SEED2 != SEED2): continue
     Team1_Class  = teams[ (teams.Team_Id == i)]['Team_Class'].mean()
     Team2_Class  = teams[ (teams.Team_Id == j)]['Team_Class'].mean()
     Team1FTP     = teams[ (teams.Team_Id == i)]['FTP'].mean()
@@ -486,12 +490,10 @@ for i in range(1101,1465):
     Team2NF      = teams[ (teams.Team_Id == j)]['nFouls'].mean()
     OPFOM1       = teams[ (teams.Team_Id == i)]['OPFOM1'].mean()
     OPFOM2       = teams[ (teams.Team_Id == j)]['OPFOM1'].mean()
-    SEED1        = seeds[ (seeds.Season == year) & (seeds.Team == i)]['Seed'].mean()
-    SEED2        = seeds[ (seeds.Season == year) & (seeds.Team == j)]['Seed'].mean()
     #Predict high-level variables
     ClassDiff = Team1_Class-Team2_Class
-    OFFSCORE = offscore_vec[k]
-    DEFSCORE = defscore_vec[k]
+    OFFSCORE_AG = offscore_vec[k]
+    DEFSCORE_AG = defscore_vec[k]
     FOM      = fom_vec[k]
     FTSCORE  = Team1FTP * Team2NF - Team2FTP * Team1NF
     SEEDDIF  = SEED1 - SEED2 
@@ -499,8 +501,8 @@ for i in range(1101,1465):
     if ((Team1NF != Team1NF) or (Team2NF != Team2NF)):
       output = 0.5    
     else:
-      output = forest.predict([OFFSCORE, DEFSCORE, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]) 
-    #forest.predict(OFFSCORE, DEFSCORE, FOM, 'SeedDiff','FTScore', classDiff,'OPFOMDIF') 
+      if (k < 5): print "ag: ", OFFSCORE_AG, " ", DEFSCORE_AG, " ", FOM, " ", SEEDDIF, " ", FTSCORE, " ", ClassDiff, " ", OPFOM1-OPFOM2
+      output = forest.predict([OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]) 
     open_file_object.writerows(zip(i,"_", j, "_", output))
     print i, j, output
 
