@@ -9,6 +9,8 @@ pd.set_option('display.width', 1000)
 #Switches
 year = 2015 #<-- which year are we trying to predict
 
+#MaxTeam # should be 1465
+
 #Load in regular season data
 df = pd.read_csv('data/RegularSeasonDetailedResults.csv', header = 0)
 
@@ -311,12 +313,12 @@ tourney.loc[ (tourney.Daynum < 140) & (tourney.ClassDiff < 0), 'PFOM1'] = tourne
 tourney.loc[ (tourney.Daynum < 140) & (tourney.ClassDiff > 0), 'PFOM1'] = 1.-((1.-tourney.PFOM1)**(1/(2*abs(tourney.ClassDiff))))
 
 #Now we're going to make this prediction using machine learning
-train = df[(df.Season >= year-3) & (df.Season <= year)][['FOM1','Team1AFOM1','Team2AFOM1','ClassDiff']]
+train = df[(df.Season >= year-3) & (df.Season <= year) ][['FOM1','Team1AFOM1','Team2AFOM1','ClassDiff']]
 train_data = train.values
 tourney['ClassDiff'] = tourney.ClassDiff * (tourney.Daynum < 140)
 forest = RandomForestClassifier(n_estimators = 100)
 forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
-test = tourney[tourney.Season >= year-10][['FOM1','Team1AFOM1','Team2AFOM1','ClassDiff']]
+test = tourney[(tourney.Season >= year-10)][['FOM1','Team1AFOM1','Team2AFOM1','ClassDiff']]
 test_data = test.values
 output = forest.predict(test_data[0::,1::]).astype(float)
 tourney.loc[ (tourney.Season >= year-10), 'CPFOM'] = output
@@ -437,7 +439,7 @@ train = df[(df.Season >= year-3) & (df.Season <= year)][['FOM1','TO_DIFF','ST_DI
 train_data = train.values
 forest = RandomForestClassifier(n_estimators = 100)
 forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
-test = tourney[(tourney.Season >= year-10) & (tourney.Season <= year)][['FOM1','TO_DIFF','ST_DIFF','DR_DIFF','BLK_DIFF']]
+test = tourney[ (tourney.Season >= year-10) & (tourney.Season <= year)][['FOM1','TO_DIFF','ST_DIFF','DR_DIFF','BLK_DIFF']]
 test_data = test.values
 output = forest.predict(test_data[0::,1::]).astype(float)
 tourney.loc[(tourney.Season >= year-10) & (tourney.Season <= year), 'DEFSCORE'] = output
@@ -466,7 +468,6 @@ forest = RandomForestClassifier(n_estimators = 100)
 forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
 
 #Open file to store predictions
-print "470"
 train = tourney[((tourney.Season >= year-10) & (tourney.Season <= year-1))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']]
 predictions_file = open("2015_pred.csv", "wb")
 open_file_object = csv.writer(predictions_file)
@@ -490,6 +491,8 @@ for i in range(1101,1465):
     Team2NF      = teams[ (teams.Team_Id == j)]['nFouls'].mean()
     OPFOM1       = teams[ (teams.Team_Id == i)]['OPFOM1'].mean()
     OPFOM2       = teams[ (teams.Team_Id == j)]['OPFOM1'].mean()
+    Team1_Name   = str(teams[ (teams.Team_Id == i)]['Team_Name'].max())
+    Team2_Name   = str(teams[ (teams.Team_Id == j)]['Team_Name'].max())
     #Predict high-level variables
     ClassDiff = Team1_Class-Team2_Class
     OFFSCORE_AG = offscore_vec[k]
@@ -501,10 +504,10 @@ for i in range(1101,1465):
     if ((Team1NF != Team1NF) or (Team2NF != Team2NF)):
       output = 0.5    
     else:
-      if (k < 5): print "ag: ", OFFSCORE_AG, " ", DEFSCORE_AG, " ", FOM, " ", SEEDDIF, " ", FTSCORE, " ", ClassDiff, " ", OPFOM1-OPFOM2
-      output = forest.predict([OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]) 
-    open_file_object.writerows(zip(i,"_", j, "_", output))
-    print i, j, output
+      print [OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]
+      output = forest.predict([OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]).astype(float)
+    printMe = "2015_%i_%i,%f         %s,%s" % (i, j, output, Team1_Name, Team2_Name)
+    open_file_object.writerows(printMe)
 
 #Close file
 predictions_file.close()
