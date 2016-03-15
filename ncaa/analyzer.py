@@ -7,7 +7,7 @@ import csv
 pd.set_option('display.width', 1000)
 
 #Switches
-year = 2015 #<-- which year are we trying to predict
+year = 2016 #<-- which year are we trying to predict
 
 #MaxTeam # should be 1465
 
@@ -22,6 +22,13 @@ teams = pd.read_csv('data/Teams.csv', header = 0)
 
 #Load in seed information
 seeds = pd.read_csv('data/TourneySeeds.csv', header = 0)
+
+#------------------------    NOTES                         -------------------------------------
+#   It seems like there is not enough tournament data to do machine learning on the last step.
+#      *Instead take 1/3 seed diff, 1/3 PFOM, and 1/3 average of everything else
+#      *In first two rounds, add or subtract 0.15 depending on class
+#   OPFOM was supposed to be a measure of how difficult your opponents were. 
+#      *Currently this is useless, try to instead take average class of opponenent, or nRankedOpps
 
 #------------------------    GENERAL OVERVIEW OF METHOD    -------------------------------------
 #  1) We train on the 2015 regular season data in order to collect all our variables
@@ -462,7 +469,7 @@ for i in range(1101,1465):
 
 ###          NOW PRINT OUT THE HIGH LEVEL DATA!!!!!!!!     #######
 #Train on the 2001-2011 tourney data
-print tourney[((tourney.Season >= year-10) & (tourney.Season < year))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']].to_csv('train.csv')
+print tourney[((tourney.Season >= year-10) & (tourney.Season < year))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff']].to_csv('train.csv')
 #train_data = train.values
 #forest = RandomForestClassifier(n_estimators = 100)
 #forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
@@ -472,7 +479,7 @@ print tourney[((tourney.Season >= year-10) & (tourney.Season < year))][['FOM1','
 #open_file_object = csv.writer(predictions_file)
 #open_file_object.writerow(["id","pred"])
 
-#Predict all 2015 matchups
+#Predict all 2016 matchups
 k = -1
 for i in range(1101,1465):
   for j in range(i+1, 1465): 
@@ -500,7 +507,7 @@ for i in range(1101,1465):
     FTSCORE  = Team1FTP * Team2NF - Team2FTP * Team1NF
     SEEDDIF  = SEED1 - SEED2 
     #Final prediction
-    print i, j, OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2
+    print i, j, OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff
     #output = 0.5
     #if ((Team1NF != Team1NF) or (Team2NF != Team2NF)):
     #  output = 0.5    
