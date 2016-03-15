@@ -460,18 +460,17 @@ for i in range(1101,1465):
     DEFSCORE = forest.predict([NTO1-NTO2, NST1-NST2, NDR1-NDR2, NBLK1-NBLK2])
     defscore_vec.append(DEFSCORE[0])
 
-###          NOW FOR THE BIG PREDICTIONS!!!!!!!!     #######
+###          NOW PRINT OUT THE HIGH LEVEL DATA!!!!!!!!     #######
 #Train on the 2001-2011 tourney data
-train = tourney[((tourney.Season >= year-10) & (tourney.Season < year-3))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']]
-train_data = train.values
-forest = RandomForestClassifier(n_estimators = 100)
-forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
+print tourney[((tourney.Season >= year-10) & (tourney.Season < year))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']].to_csv('train.csv')
+#train_data = train.values
+#forest = RandomForestClassifier(n_estimators = 100)
+#forest = forest.fit(train_data[0::,1::],train_data[0::,0].astype(str))
 
 #Open file to store predictions
-train = tourney[((tourney.Season >= year-10) & (tourney.Season <= year-1))][['FOM1','OFFSCORE','DEFSCORE','PFOM','SeedDiff','FTScore','ClassDiff','OPFOMDIF']]
-predictions_file = open("2015_pred.csv", "wb")
-open_file_object = csv.writer(predictions_file)
-open_file_object.writerow(["id","pred"])
+#predictions_file = open("2015_pred.csv", "wb")
+#open_file_object = csv.writer(predictions_file)
+#open_file_object.writerow(["id","pred"])
 
 #Predict all 2015 matchups
 k = -1
@@ -501,13 +500,16 @@ for i in range(1101,1465):
     FTSCORE  = Team1FTP * Team2NF - Team2FTP * Team1NF
     SEEDDIF  = SEED1 - SEED2 
     #Final prediction
-    if ((Team1NF != Team1NF) or (Team2NF != Team2NF)):
-      output = 0.5    
-    else:
-      print [OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]
-      output = forest.predict([OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]).astype(float)
-    printMe = "2015_%i_%i,%f         %s,%s" % (i, j, output, Team1_Name, Team2_Name)
-    open_file_object.writerows(printMe)
+    print i, j, OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2
+    #output = 0.5
+    #if ((Team1NF != Team1NF) or (Team2NF != Team2NF)):
+    #  output = 0.5    
+    #else:
+    #  a = [OFFSCORE_AG, DEFSCORE_AG, FOM, SEEDDIF, FTSCORE, ClassDiff, OPFOM1-OPFOM2]
+    #  print a
+    #  output = forest.predict(a).astype(float)
+    #printMe = "2015_%i_%i,%f         %s,%s" % (i, j, output, Team1_Name, Team2_Name)
+    #open_file_object.writerows(printMe)
 
 #Close file
-predictions_file.close()
+#predictions_file.close()
